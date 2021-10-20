@@ -78,7 +78,7 @@ Docker installation (Should be included in the base nvidia Image)
 ### Clone repository ###
 
 ```
-git clone git@bitbucket.org:wil_ly/deepdrone-cc.git
+git clone git@github.com:PerpetuumProgress/DeepDrone-Companion-Computer.git
 ```
 
 ### Run the container ###
