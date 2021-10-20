@@ -1,0 +1,37 @@
+<launch>
+<!-- aruco detect-->
+  <!-- namespace for camera input -->
+  <arg name="camera" default="/zed_node/rgb_raw"/>
+  <arg name="image" default="image_raw_gray"/>
+  <arg name="transport" default="compressed"/>
+  <arg name="fiducial_len" default="0.30"/>
+  <arg name="dictionary" default="6"/>
+  <arg name="do_pose_estimation" default="true"/>
+  <!-- If vis_msgs set to true, pose estimation will be published with ROS standard vision_msgs -->
+  <arg name="vis_msgs" default="false"/>
+  <arg name="ignore_fiducials" default="" />
+<!-- deepdrone: 0-1: 0.3, 4-5: 0.5, 26-27: 0.3, 28-31: 0.5, 34-35: 0.5, 38-39: 0.4 40-47: 0.3, 50-51: 0.5, 52-59: 0.4, 60-67: 0.3, 102-107: 0.5, 108-119: 0.3-->
+  <arg name="fiducial_len_override" default="0-1: 0.3, 4-5: 0.5, 26-27: 0.3, 28-31: 0.3, 34-35: 0.5, 38-39: 0.4 40-47: 0.3, 50-51: 0.5, 52-59: 0.4, 60-67: 0.3, 102-107: 0.5, 108-119: 0.3" />
+
+
+  <node pkg="aruco_detect" name="aruco_detect"
+    type="aruco_detect" output="screen" respawn="false">
+    <param name="image_transport" value="$(arg transport)"/>
+    <param name="publish_images" value="true" />
+    <param name="fiducial_len" value="$(arg fiducial_len)"/>
+    <param name="dictionary" value="$(arg dictionary)"/>
+    <param name="do_pose_estimation" value="$(arg do_pose_estimation)"/>
+    <param name="ignore_fiducials" value="$(arg ignore_fiducials)"/>
+    <param name="fiducial_len_override" value="$(arg fiducial_len_override)"/>
+    <remap from="/camera/compressed"
+        to="$(arg camera)/$(arg image)/$(arg transport)"/>
+    <remap from="/camera_info" to="$(arg camera)/camera_info"/>
+  </node>
+
+  <node pkg="vo_publisher" name="vo_publisher_node" type="vo_publisher_node" output="screen" respawn="false">
+          <param name="interval" value="1"/>
+          <param name="frame_id" value="camera_link"/>
+          <param name="latch" value="false"/>
+  </node>
+
+</launch>

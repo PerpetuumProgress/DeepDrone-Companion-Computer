@@ -1,0 +1,62 @@
+version: "3.9"
+services:
+    planner:
+        image: spokorny/ddc:cc
+        network_mode: host
+        depends_on:
+          - camera
+        devices:
+          - "/dev/ttyTHS1:/dev/ttyTHS1"
+        runtime: nvidia
+        volumes:
+          - "./images/avoidance_image/local_planner/launch/:/root/catkin_ws/src/avoidance/local_planner/launch/" 
+          - "./images/avoidance_image/avoidance/launch:/root/catkin_ws/src/avoidance/avoidance/launch/"
+          - /tmp/.X11-unix:/tmp/.X11-unix
+          - ~/.Xauthority:/root/.Xauthority
+        environment: 
+          XAUTHORITY:
+          DISPLAY:
+          TERM: 'xterm-256color'
+          QT_X11_NO_MITSHM: 1
+        command: "roslaunch --wait ${PLANNER} ${PLANNER}_zed2.launch"
+    camera:
+        image: spokorny/ddc:cc_zed
+        network_mode: host
+        volumes:
+          - ./images/zed_image/launch/:/opt/ros_ws/src/zed-ros-wrapper/zed_wrapper/launch/
+          - ./images/zed_image/recordings/:/opt/recordings
+          - ./images/zed_image/config/:/usr/local/zed/settings/
+          - /tmp/.X11-unix:/tmp/.X11-unix
+          - ~/.Xauthority:/root/.Xauthority
+        runtime: nvidia
+        privileged: true
+        environment:
+          DISPLAY:
+          XAUTHORITY: 
+        command: "roslaunch zed_wrapper zed_no_tf.launch"
+    aruco:
+         image: spokorny/ddc:cc_aruco
+         network_mode : host
+         depends_on:
+          - camera
+         runtime: nvidia
+         environment:
+          DISPLAY:
+          XAUTHORITY:
+         volumes:
+          - "~:/home"
+          - "./images/aruco_image/vo_publisher:/root/catkin_ws/src/vo_publisher" 
+          - /tmp/.X11-unix:/tmp/.X11-unix
+          - ~/.Xauthority:/root/.Xauthority
+         command: "roslaunch --wait vo_publisher aruco_detect.launch"
+    rviz:
+         image: spokorny/ddc:cc_rvizweb
+         network_mode : host
+         depends_on:
+          - camera
+         runtime: nvidia
+         volumes:
+          - "./images/rvizweb_image/rvizweb/launch:/root/rvizweb_ws/src/rvizweb/launch"
+          - "./images/rvizweb_image/rvizweb/config:/root/rvizweb_ws/src/rvizweb/config"
+         command: "roslaunch --wait rvizweb rvizweb.launch config_file:=./src/rvizweb/config/configuration.json"
+

@@ -1,0 +1,39 @@
+version: "3.9"
+services:
+    planner:
+        image: spokorny/ddc:cc
+        network_mode: host
+        devices:
+          - "/dev/ttyTHS1:/dev/ttyTHS1"
+        runtime: nvidia
+        volumes:
+          - "./images/avoidance_image/local_planner/launch/:/root/catkin_ws/src/avoidance/local_planner/launch/" 
+          - "./images/avoidance_image/avoidance/launch:/root/catkin_ws/src/avoidance/avoidance/launch/"
+          - /tmp/.X11-unix:/tmp/.X11-unix
+          - ~/.Xauthority:/root/.Xauthority
+        environment: 
+          XAUTHORITY:
+          DISPLAY:
+          ROS_MASTER_URI: "http://10.0.0.1:11311"
+          ROS_IP: "10.0.0.5"
+          QT_X11_NO_MITSHM: 1
+        command: "roslaunch --wait ${PLANNER} ${PLANNER}.launch pointcloud_topics:=[/camera/depth/points]"
+    aruco:
+         image: spokorny/ddc:cc_aruco
+         network_mode : host
+         runtime: nvidia
+         environment:
+          ROS_MASTER_URI: "http://10.0.0.1:11311"
+          ROS_IP: "10.0.0.5"
+          NVIDIA_VISIBLE_DEVICES: all
+          NVIDIA_DRIVER_CAPABILITIES: all 
+          LIBGL_ALWAYS_SOFTWARE: 1
+          DISPLAY:
+          XAUTHORITY:
+         volumes:
+          - "~:/home"
+          - "./images/aruco_image/vo_publisher:/root/catkin_ws/src/vo_publisher" 
+          - /tmp/.X11-unix:/tmp/.X11-unix
+          - ~/.Xauthority:/root/.Xauthority
+         command: "roslaunch --wait vo_publisher aruco_detect.launch camera:=/camera/rgb image:=image_raw"
+

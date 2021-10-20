@@ -1,0 +1,13 @@
+[Unit]
+Description=Avoidance System for PX4 Autopilot
+Requires=docker.service
+After=docker.service
+
+[Service]
+User=<USER>
+RemainAfterExit=yes
+ExecStart=<REPOSITORY_HOME>/run.bash -c zed2 -p local_planner start
+ExecStop=<REPOSITOY_HOME>/run.bash -c zed2 -p local_planner stop
+
+[Install]
+WantedBy=multi-user.target                            
