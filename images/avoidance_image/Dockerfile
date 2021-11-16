@@ -36,7 +36,6 @@ RUN git clone https://github.com/PX4/avoidance.git
 RUN /bin/bash -c '. /opt/ros/melodic/setup.bash; catkin build -j2 -w ~/catkin_ws'
 
 #Copy hitl launch files
-COPY ./avoidance/launch/avoidance* /root/catkin_ws/src/avoidance/avoidance/launch/
 COPY ./local_planner/launch/local_planner* /root/catkin_ws/src/avoidance/local_planner/launch/
 COPY ./global_planner/launch/global_planner* /root/catkin_ws/src/avoidance/global_planner/launch/
 

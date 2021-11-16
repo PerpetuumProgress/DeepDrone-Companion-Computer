@@ -9,8 +9,6 @@ project(vo_publisher)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
-  tf2_ros 
-  tf2
   pcl_ros
   roscpp
   sensor_msgs

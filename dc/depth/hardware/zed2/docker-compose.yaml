@@ -31,6 +31,7 @@ services:
         runtime: nvidia
         privileged: true
         environment:
+ #         ROS_IP: "10.42.0.1"
           DISPLAY:
           XAUTHORITY: 
         command: "roslaunch zed_wrapper zed_no_tf.launch"
@@ -41,6 +42,10 @@ services:
           - camera
          runtime: nvidia
          environment:
+ #         ROS_IP: "10.42.0.1"
+          NVIDIA_VISIBLE_DEVICES: all
+          NVIDIA_DRIVER_CAPABILITIES: all 
+          LIBGL_ALWAYS_SOFTWARE: 1
           DISPLAY:
           XAUTHORITY:
          volumes:
@@ -49,14 +54,3 @@ services:
           - /tmp/.X11-unix:/tmp/.X11-unix
           - ~/.Xauthority:/root/.Xauthority
          command: "roslaunch --wait vo_publisher aruco_detect.launch"
-    rviz:
-         image: spokorny/ddc:cc_rvizweb
-         network_mode : host
-         depends_on:
-          - camera
-         runtime: nvidia
-         volumes:
-          - "./images/rvizweb_image/rvizweb/launch:/root/rvizweb_ws/src/rvizweb/launch"
-          - "./images/rvizweb_image/rvizweb/config:/root/rvizweb_ws/src/rvizweb/config"
-         command: "roslaunch --wait rvizweb rvizweb.launch config_file:=./src/rvizweb/config/configuration.json"
-

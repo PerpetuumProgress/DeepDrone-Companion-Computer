@@ -51,9 +51,7 @@
 #include <fiducial_msgs/FiducialTransform.h>
 #include <fiducial_msgs/FiducialTransformArray.h>
 #include <pcl/common/transforms.h>
-#include <tf2_ros/transform_listener.h>
-#include <tf2/LinearMath/Transform.h>
-#include <geometry_msgs/TransformStamped.h>
+
 
 
 #include <string>
@@ -70,7 +68,6 @@ T get_param(std::string const& name, T default_value) {
 
 static std::vector <pcl::PointCloud<pcl::PointXYZ>::Ptr, Eigen::aligned_allocator <pcl::PointCloud <pcl::PointXYZ>::Ptr > > sourceClouds;
 static std::vector <pcl::PointCloud<pcl::PointXYZ>::Ptr, Eigen::aligned_allocator <pcl::PointCloud <pcl::PointXYZ>::Ptr > > transformedClouds;
-static std::vector <pcl::PointCloud<pcl::PointXYZ>::Ptr, Eigen::aligned_allocator <pcl::PointCloud <pcl::PointXYZ>::Ptr > > emptyClouds;
 
 class pcd_to_pointcloud {
     ros::NodeHandle nh;
@@ -91,25 +88,15 @@ class pcd_to_pointcloud {
     ros::Subscriber sub;
     // timer to handle republishing
     ros::Timer timer;
-
-    //tf2_ros::Buffer tfBuffer;
-    //tf2_ros::TransformListener tfListener;
-
-    void clearTransformedPointcloud(){
-        for (int i=0; i<transformedClouds.size();i++){
-            pcl::PointCloud<pcl::PointXYZ>::Ptr tempCloud(new pcl::PointCloud<pcl::PointXYZ>);
-            transformedClouds[i]=tempCloud;
-        }
-    }
-
+    
 
 
 	void publish() {
-        
+
    	    pcl::PointCloud<pcl::PointXYZ>::Ptr mergerdPointcloud_ptr (new pcl::PointCloud<pcl::PointXYZ>);
+
         for (int i=0; i<transformedClouds.size();i++){
-            *mergerdPointcloud_ptr+=*transformedClouds[i];
-            ROS_INFO("Added PointCloud");
+             *mergerdPointcloud_ptr+=*transformedClouds[i];
         }
 
         pcl::toROSMsg (*mergerdPointcloud_ptr, cloud);
@@ -126,7 +113,6 @@ class pcd_to_pointcloud {
         // update timestamp and publish
         cloud.header.stamp = ros::Time::now();
         pub.publish(cloud);
-        clearTransformedPointcloud();
     }
 
     void timer_callback(ros::TimerEvent const&) {
@@ -138,15 +124,10 @@ class pcd_to_pointcloud {
         //Transform
         //
         //judge the lenght of the array
-     
-        
-        
-        for (int i=0; i < msg->transforms.size();i++){
+        for (int i=0; i<msg->transforms.size();i++){
 
-            Eigen::Matrix4f aruco_to_camera_transform = Eigen::Matrix4f::Identity();
-            Eigen::Matrix4f yrotation = Eigen::Matrix4f::Identity();
-
-
+            Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+            
             int fiducial_id = msg->transforms[i].fiducial_id;
             //Rotation Quarterion
             double q0 = msg->transforms[i].transform.rotation.w;
@@ -158,86 +139,39 @@ class pcd_to_pointcloud {
             double x = msg->transforms[i].transform.translation.x;
             double y = msg->transforms[i].transform.translation.y;
             double z = msg->transforms[i].transform.translation.z;
-            
 
-
-
-            
             // Define a rotation matrix (see https://en.wikipedia.org/wiki/Rotation_matrix)
-            aruco_to_camera_transform <<   2*(q0*q0+q1*q1)-1    ,2*(q1*q2-q0*q3)   ,2*(q1*q3+q0*q2)   , x ,   
-       		                           2*(q1*q2+q0*q3)      ,2*(q0*q0+q2*q2)-1 ,2*(q2*q3-q0*q1)   , y ,    
-                                           2*(q1*q3-q0*q2)      ,2*(q2*q3+q0*q1)   ,2*(q0*q0+q3*q3)-1 , z ,   
-                                           0                    ,0                 ,0                 , 1 ;
+            transform <<     2*(std::pow(q0,2)+std::pow(q1,2))-1 ,2*(q1*q2-q0*q3)                     ,2*(q1*q3+q0*q2)                     , x ,   
+                             2*(q1*q2+q0*q3)                     ,2*(std::pow(q0,2)+std::pow(q2,2))-1 ,2*(q2*q3-q0*q1)                     , y ,    
+                             2*(q1*q3-q0*q2)                     ,2*(q2*q3+q0*q1)                     ,2*(std::pow(q0,2)+std::pow(q3,2))-1 , z ,   
+                             0                                   ,0                                   ,0                                   , 1 ;
 
 
-            yrotation <<  0,0,1,0,
-                          0,1,0,0,
-                          -1,0,0,0,
-                          0,0,0,1;
-
-	    if(sourceClouds.size() >= msg->transforms[i].fiducial_id){
-                pcl::transformPointCloud (*sourceClouds[msg->transforms[i].fiducial_id],*transformedClouds[msg->transforms[i].fiducial_id], aruco_to_camera_transform );
-                pcl::transformPointCloud (*transformedClouds[msg->transforms[i].fiducial_id],*transformedClouds[msg->transforms[i].fiducial_id], yrotation );
-            }
-
+            pcl::transformPointCloud (*sourceClouds[msg->transforms[i].fiducial_id],*transformedClouds[msg->transforms[i].fiducial_id], transform);
+            
             //TRANSFORM TO LOCAL_ORIGIN FRAME HERE
 
-            // Get the TF transform
-           /*
-            try {
-              geometry_msgs::msg::TransformStamped tf_transform;
-              tf_transform = tfBuffer.lookupTransform("local_origin", "camera_link", ros::Time(0));
+            tf::StampedTransform local_origin_transform;
+            tf_listener.lookupTransform ("local_origin", "camer_link", ros.now(), local_origin_transform);
 
-	          Eigen::Matrix4f camera_to_localorigin_transform;
+            Eigen::Matrix4f eigen_transform;
+            transformAsMatrix (transform, local_origin_transform);
 
-              transformAsMatrix(tf_transform, camera_to_localorigin_transform);
-              Eigen::Matrix4f total_transform = aruco_to_camera_transform * camera_to_localorigin_transform;
-              pcl::transformPointCloud (*transformedClouds[msg->transforms[i].fiducial_id],*transformedClouds[msg->transforms[i].fiducial_id], total_transform);
+            
 
-            } catch (tf2::TransformException &ex) {
-              ROS_WARN("%s",ex.what());
-              ros::Duration(1.0).sleep();
-              continue;
-            }
-            */
- 
             ROS_INFO("%.i ID: x=%.2f",msg->transforms[i].fiducial_id ,msg->transforms[i].transform.translation.x);
             ROS_INFO("%.i ID: z=%.2f",msg->transforms[i].fiducial_id ,msg->transforms[i].transform.translation.z);
             ROS_INFO("%.i ID: y=%.2f",msg->transforms[i].fiducial_id ,msg->transforms[i].transform.translation.y);
         }
     }
-/*
-    void transformAsMatrix(const tf2::Transform & bt, Eigen::Matrix4f & out_mat) {
-        double mv[12];
-        bt.getBasis().getOpenGLSubMatrix(mv);
-
-        tf2::Vector3 origin = bt.getOrigin();
-
-        out_mat(0, 0) = mv[0]; out_mat(0, 1) = mv[4]; out_mat(0, 2) = mv[8];
-        out_mat(1, 0) = mv[1]; out_mat(1, 1) = mv[5]; out_mat(1, 2) = mv[9];
-        out_mat(2, 0) = mv[2]; out_mat(2, 1) = mv[6]; out_mat(2, 2) = mv[10];
-
-        out_mat(3, 0) = out_mat(3, 1) = out_mat(3, 2) = 0; out_mat(3, 3) = 1;
-        out_mat(0, 3) = origin.x();
-        out_mat(1, 3) = origin.y();
-        out_mat(2, 3) = origin.z();
-    }
-
-    void transformAsMatrix(const geometry_msgs::msg::TransformStamped & bt, Eigen::Matrix4f & out_mat) {
-        tf2::Transform transform;
-        tf2::convert(bt.transform, transform);
-        transformAsMatrix(transform, out_mat);
-    }
-*/
 
 
 public:
     pcd_to_pointcloud()
-    : cloud_topic("cloud_pcd"), interval(1), frame_id("camera_link"), latch(false)
+    : cloud_topic("cloud_pcd"), interval(0.0), frame_id("base_link"), latch(false)
     {
         // update potentially remapped topic name for later logging
         cloud_topic = nh.resolveName(cloud_topic);
-        //tfListener = new TransformListener(tfBuffer);
     }
 
 
@@ -260,7 +194,7 @@ public:
     bool try_load_pointcloud() {
         std::string file_name;
         //save PointClouds to array
-        for (int i = 0; i < 120; i++)
+        for (int i = 0; i < 30; i++)
         {
             file_name="/root/catkin_ws/src/vo_publisher/resources/"+std::to_string(i)+".pcd";
             pcl::PointCloud<pcl::PointXYZ>::Ptr sourceCloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -284,13 +218,11 @@ public:
         // init publisher                                                     
         pub = nh.advertise<sensor_msgs::PointCloud2>(cloud_topic, 1, latch);
         // treat publishing once as a special case to interval publishing
-        
         bool oneshot = interval <= 0;
         timer = nh.createTimer(ros::Duration(interval),
                                &pcd_to_pointcloud::timer_callback,
                                this,
                                oneshot);
-                               
     }
 
     void print_config_info() {
