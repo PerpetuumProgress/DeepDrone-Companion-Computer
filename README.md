@@ -43,7 +43,7 @@ The wiring is simple: The Pixhawk needs to be connected to the companion compute
  To start the avoidance code you simply clone this repository and run the Bash script.
 ### Clone repository ###
 ```
-git clone git@bitbucket.org:wil_ly/deepdrone-cc.git
+git clone git@github.com:PerpetuumProgress/DeepDrone-Companion-Computer.git
 ```
 ### Run the container ###
 ```
